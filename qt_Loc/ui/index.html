@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location de Véhicules</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Poppins:200,400,500,600,700" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <transition name="fade">
+            <div class="shop-container" v-if="visible">
+                <div class="shop-dashboard">
+                    <div class="shop-contain">
+                        <div class="shop-header">
+                            <div class="shop-left">
+                                <div class="title">Quantom Loc</div>
+                                <div class="filters">
+                                    <div 
+                                        v-for="category in categories" 
+                                        :key="category"
+                                        class="shop-filter"
+                                        :class="{ selected: filters.category === category }"
+                                        @click="filters.category = category === filters.category ? '' : category"
+                                    >
+                                        {{ category }}
+                                    </div>
+                                    <div 
+                                        class="shop-filter"
+                                        :class="{ selected: filters.category === '' }"
+                                        @click="filters.category = ''"
+                                    >
+                                        Tous
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="shop-right">
+                                <input 
+                                    type="text" 
+                                    class="search-bar" 
+                                    placeholder="Rechercher..." 
+                                    v-model="filters.search"
+                                >
+                                <div class="select-menu">
+                                    <div class="select" @click="toggleSort">
+                                        <span>{{ sortOptions[filters.sortBy] }}</span>
+                                        <i class="fas fa-chevron-down select-arrow"></i>
+                                    </div>
+                                    <div class="options" v-if="showSortOptions">
+                                        <div 
+                                            v-for="(label, value) in sortOptions" 
+                                            :key="value"
+                                            class="option"
+                                            @click="selectSort(value)"
+                                        >
+                                            {{ label }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="shop-content">
+                            <div class="shop-content-left">
+                                <div 
+                                    v-for="vehicle in filteredVehicles" 
+                                    :key="vehicle.model"
+                                    class="shopcard-container"
+                                    :class="{ selected: selectedVehicle && selectedVehicle.model === vehicle.model }"
+                                    @click="selectVehicle(vehicle)"
+                                >
+                                    <div class="shopcard-header">
+                                        {{ formatPrice(vehicle.price) }}
+                                    </div>
+                                    <img :src="getVehicleImage(vehicle.img)" :alt="vehicle.name">
+                                    <div class="shopcard-footer">
+                                        {{ vehicle.name }}
+                                    </div>
+                                </div>
+                                <div class="no-items" v-if="filteredVehicles.length === 0">
+                                    Aucun véhicule trouvé
+                                </div>
+                            </div>
+                            <div class="shop-content-right">
+                                <div class="shop-content-right-basket">
+                                    <div class="shop-content-right-items" v-if="currentStep === 1">
+                                        <div class="cart-empty" v-if="!selectedVehicle">
+                                            Sélectionnez un véhicule
+                                        </div>
+                                        <div class="basket-container" v-else>
+                                            <div class="basket-title">
+                                                <img :src="getVehicleImage(selectedVehicle.img)" :alt="selectedVehicle.name">
+                                                <span class="basket-name">{{ selectedVehicle.name }}</span>
+                                            </div>
+                                            <div class="basket-details">
+                                                <div class="basket-price">{{ formatPrice(selectedVehicle.price) }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="shop-content-right-items" v-else-if="currentStep === 2">
+                                        <div class="basket-container">
+                                            <div class="basket-title">
+                                                <img :src="getVehicleImage(selectedVehicle.img)" :alt="selectedVehicle.name">
+                                                <span class="basket-name">{{ selectedVehicle.name }}</span>
+                                            </div>
+                                            <div class="basket-price">{{ formatPrice(selectedVehicle.price) }}</div>
+                                        </div>
+                                        <div class="colors-container">
+                                            <div class="select-menu" style="width: 100%; margin-top: 10px;">
+                                                <div class="select" @click="toggleColorMenu">
+                                                    <div class="selected-color-preview" 
+                                                        :style="{
+                                                            backgroundColor: selectedColor ? getRgbString(selectedColor.rgb) : 'transparent',
+                                                            width: '20px',
+                                                            height: '20px',
+                                                            borderRadius: '50%',
+                                                            display: 'inline-block',
+                                                            marginRight: '10px',
+                                                            border: '1px solid var(--white-50)'
+                                                        }"
+                                                    ></div>
+                                                    <span>{{ selectedColor ? selectedColor.name : 'Sélectionnez une couleur' }}</span>
+                                                    <i class="fas fa-chevron-down select-arrow"></i>
+                                                </div>
+                                                <div class="options" v-if="showColorOptions">
+                                                    <div 
+                                                        v-for="color in colors" 
+                                                        :key="color.name"
+                                                        class="option color-option"
+                                                        @click="selectColor(color)"
+                                                    >
+                                                        <div class="color-preview" 
+                                                            :style="{
+                                                                backgroundColor: getRgbString(color.rgb),
+                                                                width: '15px',
+                                                                height: '15px',
+                                                                borderRadius: '50%',
+                                                                display: 'inline-block',
+                                                                marginRight: '10px',
+                                                            }"
+                                                        ></div>
+                                                        {{ color.name }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="shop-content-right-items" v-else-if="currentStep === 3">
+                                        <div class="basket-container">
+                                            <div class="basket-title">
+                                                <img :src="getVehicleImage(selectedVehicle.img)" :alt="selectedVehicle.name">
+                                                <span class="basket-name">{{ selectedVehicle.name }}</span>
+                                            </div>
+                                            <div class="basket-details">
+                                                <div class="basket-price">{{ formatPrice(selectedVehicle.price) }}</div>
+                                            </div>
+                                        </div>
+                                        <div class="shop-content-right-paymentmethod">
+                                            <button 
+                                                v-for="method in paymentMethods" 
+                                                :key="method.value"
+                                                class="shop-content-button"
+                                                :class="{ selected: selectedPaymentMethod && selectedPaymentMethod.value === method.value }"
+                                                @click="selectPaymentMethod(method)"
+                                            >
+                                                <i :class="getPaymentIcon(method.value)"></i>
+                                                {{ method.label }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="shop-content-right-buy" v-if="currentStep === 1 && selectedVehicle" @click="nextStep">
+                                        <i class="fas fa-palette"></i>
+                                        Choisir une couleur
+                                    </div>
+                                    <div class="shop-content-right-buy" v-else-if="currentStep === 2 && selectedColor" @click="nextStep">
+                                        <i class="fas fa-credit-card"></i>
+                                        Passer au paiement
+                                    </div>
+                                    <div class="shop-content-right-buy" v-else-if="currentStep === 3 && selectedPaymentMethod" @click="rentVehicle">
+                                        <i class="fas fa-check"></i>
+                                        Confirmer la location
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="shop-close-button" @click="closeMenu">
+                    <i class="fas fa-times"></i>
+                </div>
+                <div id="notification" :class="{ show: notification.show, hidden: !notification.show, success: notification.type === 'success', error: notification.type === 'error', warning: notification.type === 'warning' }">
+                    <i :class="notification.icon"></i>
+                    {{ notification.message }}
+                </div>
+            </div>
+        </transition>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.prod.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
